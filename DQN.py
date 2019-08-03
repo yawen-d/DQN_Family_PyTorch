@@ -17,9 +17,9 @@ import torchvision.transforms as T
 
 class DQN(nn.Module):
 
-    def __init__(self, h, w, outputs):
+    def __init__(self, h, w, output_size):
         super(DQN,self).__init__()
-        self.conv1 = nn.Conv2d(1,16,kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(4,16,kernel_size=5, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.bn2 = nn.BatchNorm2d(32)
@@ -33,7 +33,7 @@ class DQN(nn.Module):
         convw = func(func(func(w)))
         convh = func(func(func(h)))
         fc_input = convh * convw * 32
-        self.fc = nn.Linear(fc_input, outputs)
+        self.fc = nn.Linear(fc_input, output_size)
     
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).

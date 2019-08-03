@@ -19,12 +19,12 @@ import torchvision.transforms as T
 
 # define the resize transfomation
 resize = T.Compose([T.ToPILImage(),
-                    T.Resize(84, interpolation=Image.CUBIC),
+                    T.Resize((84,84), interpolation=Image.CUBIC),
                     T.Grayscale(num_output_channels=1),
                     T.ToTensor()])
 
 # get a resized screen
-def get_screen():
+def get_screen(env):
     '''
     return a resized screen (tensor) in (BCHW)
     '''
@@ -35,15 +35,37 @@ def get_screen():
     screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
     screen = torch.from_numpy(screen)
     
-    # Resize, and add a batch dimension (BCHW)
-    screen = resize(screen).unsqueeze(0).to(device)
-    print(type(screen), screen.shape)
+    # Resize, and add a batch dimension (HW)
+    screen = resize(screen).squeeze(0)
     return screen
     
 # show the screen
 def show_screen(screen):
     plt.figure()
-    plt.imshow(screen.cpu().squeeze(0).squeeze(0).numpy(),
+    plt.imshow(screen.cpu().numpy(),
                interpolation='none')
     plt.title('Example extracted screen')
     plt.show()
+
+Transition = namedtuple('Transition',
+                        ('state', 'action', 'next_state', 'reward', 'done'))
+
+class ReplayMemory(object):
+    
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+        self.position = 0
+        
+    def push_one(self, *args):
+        """saves a transition"""
+        if len(self.memory) < self.capacity:
+            self.memory.append(None)
+        self.memory[self.position] = Transition(*args)
+        self.position = (self.position + 1) % self.capacity
+        
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)
