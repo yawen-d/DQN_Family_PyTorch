@@ -1,4 +1,5 @@
 import gym
+from gym import wrappers
 import math
 import random
 import numpy as np
@@ -12,7 +13,8 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 
 from utils import *
-from DQN import *
+from Networks import *
+from Memory import *
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,24 +23,27 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
-
+# interactive mode
 plt.ion()
 
-# Hyperparamters
-NUM_EPISODES = 1000
+# Configurations
+START_EPISODE = 3000
+NUM_EPISODES = 5000
 MEMORY_CAPA = 10000
-MAX_EPS = 0.9
+MAX_EPS = 0.5
 MIN_EPS = 0.1
-EPS_DECAY = 200
-BATCH_SIZE = 32
-GAMMA = 0.99
+EPS_DECAY = 50
 UPDATE_FREQ = 5
-SAVE_FREQ = 50
+SAVE_FREQ = 100
 MODEL_PATH = './checkpoints/'
+GRAPH_PATH = './figures/'
+LOAD_PATH = ''
+BATCH_SIZE = 128
+GAMMA = 0.98
 
 episode_durations = []
 
-
+episode_durations = torch.load('./figures/3000-episode_duration.pt')
 
 def plot_durations():
     plt.figure(2)
@@ -73,7 +78,7 @@ def optimize_model(memory, policy_net, target_net, optimizer):
 
     state_action_values = policy_net(state_batch).gather(1,action_batch)
     
-    not_done_mask = [k for k,v in enumerate(done_batch) if v == 0]
+    not_done_mask = [k for k, v in enumerate(done_batch) if v == 0]
 
     not_done_next_states = next_state_batch[not_done_mask]
 
@@ -99,7 +104,8 @@ def optimize_model(memory, policy_net, target_net, optimizer):
 def main():
 
     # make environment
-    env = gym.make('CartPole-v0').unwrapped
+    env = gym.make('CartPole-v0')
+    env = wrappers.Monitor(env, 'tmp/CartPole', force=True)
     env.reset()
     initial_screen = get_screen(env)
     # show_screen(initial_screen)
@@ -109,6 +115,11 @@ def main():
 
     # initialize policy_net, and its parameters
     policy_net = DQN(screen_h, screen_w, num_actions).to(device)
+
+    # load pretrained parameters
+    if len(LOAD_PATH) != 0:
+        policy_net_pre = torch.load(LOAD_PATH)
+        policy_net.load_state_dict(policy_net_pre)
 
     # initialize target_net with same parameters as policy_net
     target_net = DQN(screen_h, screen_w, num_actions).to(device)
@@ -121,18 +132,20 @@ def main():
 
     update_counts = 0
 
-    for i_episode in range(NUM_EPISODES):
+    for i_episode in range(START_EPISODE, NUM_EPISODES):
         
         env.reset()
         # initialize initial state
         ini_screen = get_screen(env)
         state = torch.stack([ini_screen]*4)
 
-        for t in range(200):
-            # select and perform an action
-            eps = MIN_EPS + (MAX_EPS - MIN_EPS) \
-                * math.exp(-1. * update_counts / EPS_DECAY)
+        # select and perform an action
+        # eps = MIN_EPS + (MAX_EPS - MIN_EPS) \
+        #     * math.exp(-1. * (i_episode - START_EPISODE) / EPS_DECAY)
 
+        eps = MAX_EPS - (MAX_EPS - MIN_EPS) * (i_episode / NUM_EPISODES)
+
+        for t in range(500):
             if random.random() > eps:
                 with torch.no_grad():
                     # print(state.unsqueeze(0).shape)
@@ -143,6 +156,8 @@ def main():
 
             # execute action in env
             _, reward, done, _ = env.step(action.item())
+            if done:
+                reward = -1.
             reward = torch.tensor([reward], device=device)
             done = torch.tensor([done], device=device)
 
@@ -169,16 +184,20 @@ def main():
                 plot_durations()
                 break
         
-        if i_episode % UPDATE_FREQ == 0:
+        print("Episode {} finished after {} timesteps -- EPS: {}" \
+                                .format(i_episode, t+1, eps))
+
+        if (i_episode + 1) % UPDATE_FREQ == 0:
             target_net.load_state_dict(policy_net.state_dict())
             print('Target Net updated!')
-        print("Episode {} finished after {} timesteps".format(i_episode,t+1))
-        if i_episode % SAVE_FREQ == 0:
-            torch.save(policy_net.state_dict(), '{}{}.pth'.format(MODEL_PATH,i_episode))
-            print('Model saved as {}{}.pth'.format(MODEL_PATH,i_episode))
+        
+        if (i_episode + 1) % SAVE_FREQ == 0:
+            torch.save(policy_net.state_dict(), '{}{}.pth'.format(MODEL_PATH,i_episode+1))
+            torch.save(episode_durations, '{}{}-episode_duration.pt'.format(GRAPH_PATH,i_episode+1))
+            plt.savefig('{}{}-figure.png'.format(GRAPH_PATH,i_episode+1))
+            print('Model saved as {}{}.pth'.format(MODEL_PATH,i_episode+1))
 
-
-    print('Complete')
+    print('Complete!')
     env.render()
     env.close()
     plt.ioff()

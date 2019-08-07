@@ -1,0 +1,12 @@
+# ignore checkpoints
+checkpoints/
+
+# tmps
+tmp/
+
+# figures
+figures/
+
+# Playground.ipynb
+Playground.ipynb
+
