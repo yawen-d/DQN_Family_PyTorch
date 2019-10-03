@@ -234,6 +234,3 @@ class Agent(AgentConfig, EnvConfig):
         else:
             print("policy net scores -- mean:", net_score.mean())
         return net_score.mean()
-
-            
-

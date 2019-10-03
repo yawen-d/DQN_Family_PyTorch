@@ -6,13 +6,13 @@ This is a repository of Deep Q-Learning algorithm and its variants implemented i
 
 Below algorithms are implemented in this repository.
 
-**Deep Q Network (DQN)** from Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013. [[arxiv](https://arxiv.org/abs/1312.5602v1)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01. Model-Free RL/[001] Playing Atari with Deep Reinforcement Learning.md)]
+**Deep Q Network (DQN)** from Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013. [[arxiv](https://arxiv.org/abs/1312.5602v1)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01.%20Model-Free%20RL/%5B001%5D%20Playing%20Atari%20with%20Deep%20Reinforcement%20Learning.md)]
 
-**Double DQN** Deep Reinforcement Learning with Double Q-learning, Hasselt et al 2015.  [[arxiv](https://arxiv.org/abs/1509.06461)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01. Model-Free RL/[004] Deep Reinforcement Learning with Double Q-learning.md)]
+**Double DQN** Deep Reinforcement Learning with Double Q-learning, Hasselt et al 2015. [[arxiv](https://arxiv.org/abs/1509.06461)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01.%20Model-Free%20RL/%5B004%5D%20Deep%20Reinforcement%20Learning%20with%20Double%20Q-learning.md)]
 
+**Dueling DQN** Dueling Network Architectures for Deep Reinforcement Learning, Wang et al, 2015. [[arxiv](https://arxiv.org/abs/1511.06581)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01.%20Model-Free%20RL/%5B003%5D%20Dueling%20Network%20Architectures%20for%20Deep%20Reinforcement%20Learning.md)]
 
-
-**Prioritized Experience Replay (PER)** Prioritized Experience Replay, Schaul et al, 2015.  [[arxiv](https://arxiv.org/abs/1511.05952)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01. Model-Free RL/[005] Prioritized Experience Replay.md)]
+**Prioritized Experience Replay (PER)** Prioritized Experience Replay, Schaul et al, 2015.  [[arxiv](https://arxiv.org/abs/1511.05952)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01.%20Model-Free%20RL/%5B005%5D%20Prioritized%20Experience%20Replay.md)]
 
 ## Experiments and Results
 
