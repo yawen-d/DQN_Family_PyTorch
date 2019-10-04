@@ -1,15 +1,13 @@
-import gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+
+import gym
 import os
-
-import numpy as np
-
-import matplotlib.pyplot as plt
-
 import random
+import numpy as np
+import matplotlib.pyplot as plt
 
 from memory import ReplayMemory, Transition
 from networks import DQN
@@ -33,7 +31,13 @@ class Agent(AgentConfig, EnvConfig):
                                 hidden_size = 32).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def eps_decay(self):
+    def save_nets(self):
+        pass
+
+    def load_nets(self):
+        pass
+
+    def _eps_decay(self):
         self.epsilon = max(self.epsilon * self.DECAY_RATE, self.MIN_EPS)
 
     def greedy_action(self, state, eps):
@@ -66,7 +70,7 @@ class Agent(AgentConfig, EnvConfig):
             state = torch.from_numpy(state)
             
             # decay the epsilon
-            self.eps_decay()
+            self._eps_decay()
 
             for t in range(501):
                 # get the action based on state by greedy policy
@@ -234,3 +238,6 @@ class Agent(AgentConfig, EnvConfig):
         else:
             print("policy net scores -- mean:", net_score.mean())
         return net_score.mean()
+
+    def env_close(self):
+        self.env.close()

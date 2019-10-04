@@ -1,5 +1,5 @@
 class AgentConfig:
-    EXPERIMENT_NO = 5
+    EXPERIMENT_NO = 9
 
     START_EPISODE = 0
     NUM_EPISODES = 1000
@@ -8,10 +8,10 @@ class AgentConfig:
     MIN_EPS = 0.05
     
     LR = 5e-4
-    DECAY_RATE = 0.99
+    DECAY_RATE = 0.999
     BATCH_SIZE = 16
     UPDATE_FREQ = 10
-    GAMMA = 0.99
+    GAMMA = 0.999
 
     
     RES_PATH = './experiments/'
