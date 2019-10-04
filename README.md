@@ -1,10 +1,10 @@
 # Deep Q-Learning in PyTorch
 
-This is a repository of Deep Q-Learning algorithm and its variants implemented in PyTorch.
+This is a repository of DQN and its variants implementation in PyTorch based on the original papar.
 
 ## Algorithms
 
-Algorithms below are implemented in this repository.
+Algorithms below will be implemented in this repository.
 
 **Deep Q Network (DQN)** from Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013. [[arxiv](https://arxiv.org/abs/1312.5602v1)] [[summary](https://github.com/kmdanielduan/Key-Paper-Summary-in-DRL/blob/master/01.%20Model-Free%20RL/%5B001%5D%20Playing%20Atari%20with%20Deep%20Reinforcement%20Learning.md)]
 
