@@ -5,11 +5,10 @@ import torch.nn.functional as F
 
 import gym
 import os
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-from memory import ReplayMemory, Transition
+from memory import ReplayMemory, Transition, PrioritizedReplayMemory
 from networks import DQN
 from config import AgentConfig, EnvConfig
 
@@ -19,41 +18,48 @@ class Agent(AgentConfig, EnvConfig):
     def __init__(self):
         """initialize the agent and the environments"""
         self.env = gym.make(self.ENV)
-        self.memory = ReplayMemory(capacity = self.MEMORY_CAPA, per = self.PER)
+        if self.PER:
+            self.memory = PrioritizedReplayMemory(capacity = self.MEMORY_CAPA) 
+        else:
+            self.memory = ReplayMemory(capacity = self.MEMORY_CAPA) 
+                                
         self._build_nets()
         self.epsilon = self.MAX_EPS
 
     def _build_nets(self):
         self.num_actions = self.env.action_space.n
         self.policy_net = DQN(self.num_actions, input_size = 4, 
-                                hidden_size = 32).to(device)
+                                hidden_size = 32, dueling = self.DUELING).to(device)
         self.target_net = DQN(self.num_actions, input_size = 4, 
-                                hidden_size = 32).to(device)
+                                hidden_size = 32, dueling = self.DUELING).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-
-    def save_nets(self):
-        pass
-
-    def load_nets(self):
-        pass
 
     def _eps_decay(self):
         self.epsilon = max(self.epsilon * self.DECAY_RATE, self.MIN_EPS)
 
     def greedy_action(self, state, eps):
-        if random.random() > eps:
+        if torch.rand([1]).item() > eps:
             with torch.no_grad():
-                q_value = self.target_net(state.unsqueeze(0).float())
-                action = q_value.max(1)[1].view(1)
+                q_values = self.target_net(state.unsqueeze(0).float())
+                action = q_values.max(1)[1].view(1)
+                
         else:
             action = torch.tensor([self.env.action_space.sample()],
                                     device=device, dtype=torch.long)
         return action
 
-    def policy_action(self, state):
+    def policy_action(self, state, verbose = False):
         with torch.no_grad():
-            q_value = self.policy_net(state.unsqueeze(0).float())
-            action = q_value.max(1)[1].view(1)
+            # input a state_batch -> state_action_values(q_value)
+            q_values = self.policy_net(state.unsqueeze(0).float())
+            # get the argmax action
+            action = q_values.max(1)[1].view(1)
+            if verbose:
+                    print("--")
+                    print("q_values:", q_values)
+                    print("action_1:", q_values.max(1))
+                    print("action_2:", q_values.max(1)[1])
+                    print("action_3:", action)
         return action
 
     def train(self):
@@ -76,7 +82,7 @@ class Agent(AgentConfig, EnvConfig):
                 # get the action based on state by greedy policy
                 action = self.greedy_action(state, self.epsilon)
 
-                # execute action in environment
+                # execute action in the environment
                 obs, reward, done, _ = self.env.step(action.item())
                 if done:
                     reward = -1.
@@ -117,7 +123,10 @@ class Agent(AgentConfig, EnvConfig):
     def _optimize_model(self, verbose = False):
         if len(self.memory) < self.BATCH_SIZE:
             return
-        transitions = self.memory.sample(self.BATCH_SIZE)
+        if not self.PER:
+            transitions = self.memory.sample(self.BATCH_SIZE)
+        else:
+            batch_idx, transitions, norm_ISWeights = self.memory.sample(self.BATCH_SIZE)
 
         # sample random minibatch of transitions from memory
         batch = Transition(*zip(*transitions))
@@ -128,23 +137,41 @@ class Agent(AgentConfig, EnvConfig):
         done_batch = torch.stack(batch.done)
         next_state_batch = torch.stack(batch.next_state)
 
-        state_action_values = self.policy_net(state_batch.float()).gather(1,action_batch)
+        state_action_values = self.policy_net(state_batch.float()).gather(1, action_batch)
         if verbose:
-            print(self.policy_net(state_batch.float()))
-            print(action_batch)
-            print(state_action_values)
+            print("--")
+            print("state_values:", self.policy_net(state_batch.float()))
+            print("action_batch:", action_batch)
+            print("state_action_values:", state_action_values)
         not_done_mask = [k for k, v in enumerate(done_batch) if v == 0]
         not_done_next_states = next_state_batch[not_done_mask]
         next_state_values = torch.zeros_like(state_action_values)
 
-        # DQN
-        next_state_values[not_done_mask] = self.target_net(not_done_next_states.float()).max(1)[0].view(-1,1).detach()
+        if self.DOUBLE: # Double DQN   
+            # input a state_batch -> state_action_values(q_value)
+            in_q_values = self.policy_net(not_done_next_states.float())
+            # get the argmax action
+            in_actions = in_q_values.max(1)[1].view(-1, 1)
+            # get the outer q values
+            out_q_values = self.target_net(not_done_next_states.float()).gather(1, in_actions)
+            # set the next_state_values
+            next_state_values[not_done_mask] = out_q_values
+
+            if verbose:
+                print("--")
+                print("in_q_values:", in_q_values)
+                print("in_actions:", in_actions)
+                print("out_q_values", out_q_values)
+                
+        else: # DQN
+            next_state_values[not_done_mask] = self.target_net(not_done_next_states.float()).max(1)[0].view(-1,1).detach()
+
         if verbose:
-            print("--")
-            print(done_batch)
-            print(not_done_mask)
-            print(next_state_batch)
-            print(next_state_values)
+            print("-")
+            print("done_batch:", done_batch)
+            print("not_done_mask:", not_done_mask)
+            print("next_state_batch:", next_state_batch)
+            print("next_state_values:", next_state_values)
 
         # Compute the expected Q values
         target_values = reward_batch + (self.GAMMA * next_state_values)
@@ -155,6 +182,14 @@ class Agent(AgentConfig, EnvConfig):
         loss = F.smooth_l1_loss(state_action_values, target_values)
         if verbose:
             print(loss)
+        
+        if self.PER:
+            # Compute abs TD error
+            abs_errors = torch.abs(target_values - state_action_values).numpy() 
+            # Update the priority level
+            self.memory.batch_update(batch_idx, abs_errors)
+            # accumulate weight-change
+            loss = loss * norm_ISWeights
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -198,7 +233,10 @@ class Agent(AgentConfig, EnvConfig):
             "BATCH_SIZE" : self.BATCH_SIZE,
             "GAMMA" : self.GAMMA,
             "UPDATE_FREQ" : self.UPDATE_FREQ,
-            "RES_PATH" : self.RES_PATH
+            "RES_PATH" : self.RES_PATH,
+            "DOUBLE" : self.DOUBLE,
+            "DUELING" : self.DUELING,
+            "PER" : self.PER
         }
         with open(PATH + "%d-log.txt" % self.EXPERIMENT_NO, 'w') as f:
             for k,v in attr_dict.items():

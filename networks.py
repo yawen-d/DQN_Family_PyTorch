@@ -4,20 +4,31 @@ import torch.nn.functional as F
 
 class DQN(nn.Module):
 
-    def __init__(self, num_actions, input_size, hidden_size):
+    def __init__(self, num_actions, input_size, hidden_size, dueling = False):
         super(DQN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
+
         self.fc3 = nn.Linear(hidden_size, num_actions)
+        if dueling:
+            self.dueling = dueling
+            self.fc_value = nn.Linear(hidden_size, 1)
+            self.fc_actions = nn.Linear(hidden_size, num_actions)
     
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         x = x.view(x.size(0),-1)
-        # print(x.shape)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        if not self.dueling:
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            x = self.fc3(x)
+        else:
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            v = self.fc_value(x)
+            a = self.fc_actions(x)
+            x = v + a - a.mean(dim=-1) # aggregate
         return x
 
 

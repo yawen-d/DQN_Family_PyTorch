@@ -82,6 +82,17 @@ Below are the experiments to test DQN under different circumstances. In the plot
 |  8   |     5e-4      |    0.99    |     16     |  **0.9**  | ![8-result](assets/8-result.png) | Lower gamma leads to high variations of the performance.     |
 |  9   |     5e-4      | **0.999**  |     16     | **0.999** | ![9-result](assets/9-result.png) | Higher decay rate affects the epsilon greedy policy score but not the policy net score. Solved the game at around 175 episodes. |
 
+
+
+Dueling
+
+| No.  | learning rate | decay rate | batch size | gamma | result.png | Comments |
+| :--: | :-----------: | :--------: | :--------: | :---: | ---------- | -------- |
+|  21  |     5e-4      |    0.99    |     32     | 0.99  |            |          |
+|      |               |            |            |       |            |          |
+
+
+
 ## References
 
 1. [PyTorch Tutorial](https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html)
