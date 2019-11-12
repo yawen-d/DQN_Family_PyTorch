@@ -6,14 +6,16 @@ class DQN(nn.Module):
 
     def __init__(self, num_actions, input_size, hidden_size, dueling = False):
         super(DQN, self).__init__()
+        self.num_actions = num_actions
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
 
-        self.fc3 = nn.Linear(hidden_size, num_actions)
+        self.dueling = dueling
         if dueling:
-            self.dueling = dueling
             self.fc_value = nn.Linear(hidden_size, 1)
             self.fc_actions = nn.Linear(hidden_size, num_actions)
+        else:
+            self.fc3 = nn.Linear(hidden_size, self.num_actions)
     
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -28,7 +30,7 @@ class DQN(nn.Module):
             x = F.relu(self.fc2(x))
             v = self.fc_value(x)
             a = self.fc_actions(x)
-            x = v + a - a.mean(dim=-1) # aggregate
+            x = a.add(v - a.mean(dim=-1).unsqueeze(-1))
         return x
 
 

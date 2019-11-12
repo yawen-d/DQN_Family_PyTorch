@@ -109,7 +109,11 @@ class Agent(AgentConfig, EnvConfig):
                     self.episode_durations.append(t + 1)
                     break
             
-            print("Episode {} finished after {} timesteps -- EPS: {}" \
+            if self.PER:
+                print("Episode {} finished after {} timesteps -- EPS: {:.4f} -- BETA: {:.4f}" \
+                                    .format(i_episode, t+1, self.epsilon, self.memory.beta))
+            else:
+                print("Episode {} finished after {} timesteps -- EPS: {:.4f}" \
                                     .format(i_episode, t+1, self.epsilon))
 
             self.policy_net_scores.append(self.demo())
@@ -127,7 +131,6 @@ class Agent(AgentConfig, EnvConfig):
             transitions = self.memory.sample(self.BATCH_SIZE)
         else:
             batch_idx, transitions, norm_ISWeights = self.memory.sample(self.BATCH_SIZE)
-
         # sample random minibatch of transitions from memory
         batch = Transition(*zip(*transitions))
 
@@ -179,43 +182,51 @@ class Agent(AgentConfig, EnvConfig):
         assert state_action_values.shape == target_values.shape
 
         # Compute Huber loss
-        loss = F.smooth_l1_loss(state_action_values, target_values)
-        if verbose:
-            print(loss)
+        t = torch.abs(state_action_values - target_values)
+        losses = torch.where(t < 1, 0.5 * t ** 2, t - 0.5)
         
         if self.PER:
             # Compute abs TD error
-            abs_errors = torch.abs(target_values - state_action_values).numpy() 
+            abs_errors = torch.abs(target_values - state_action_values).detach()
+            abs_errors_ = abs_errors.numpy() 
             # Update the priority level
-            self.memory.batch_update(batch_idx, abs_errors)
+            self.memory.batch_update(batch_idx, abs_errors_)
             # accumulate weight-change
-            loss = loss * norm_ISWeights
+            losses = losses * abs_errors * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1)
+        
+        loss = torch.mean(losses)
 
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
-        for param in self.policy_net.parameters():
+        for key, param in self.policy_net.named_parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
+        # print("optimize!")
     
     def save_results(self):
         PATH = self.RES_PATH # + str(self.EXPERIMENT_NO) + "/"
-        # os.mkdir(PATH)
 
         # plot and save figure
         plt.figure(0)
-        durations_t = torch.tensor(self.policy_net_scores, dtype = torch.float)
+        policy_net_scores = torch.tensor(self.policy_net_scores, dtype = torch.float)
         plt.title("DQN Experiment %d" % self.EXPERIMENT_NO)
         plt.xlabel("Episode")
         plt.ylabel("Duration")
-        plt.plot(durations_t.numpy())
+        plt.plot(policy_net_scores.numpy())
         plt.plot(np.array(self.episode_durations, dtype = np.float))
         # Take 10 episode policy net score averages and plot them too
-        if len(durations_t) >= 10:
-            means = durations_t.unfold(0, 10, 1).mean(1).view(-1)
+        if len(policy_net_scores) >= 10:
+            means = policy_net_scores.unfold(0, 10, 1).mean(1).view(-1)
             means = torch.cat((torch.zeros(9), means))
             plt.plot(means.numpy())
         plt.savefig(PATH + "%d-result.png" % self.EXPERIMENT_NO)
+        results_dict = {
+            'policy_net_scores': policy_net_scores.numpy(),
+            'episode_durations': np.array(self.episode_durations, dtype = np.float),
+            'means': means.numpy()
+        }
+        torch.save(results_dict, PATH + "%d-ret.dict" % self.EXPERIMENT_NO)
         # plt.show()
         self._write_results(PATH)
     

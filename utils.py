@@ -44,8 +44,9 @@ class SumTree(object):
     position = 0
 
     def __init__(self, capacity):
+        self.length = 0
         self.capacity = capacity
-        self.tree = np.zeros( 2*capacity - 1 )
+        self.tree = np.zeros( 2 * capacity - 1 )
         self.data = np.zeros( capacity, dtype=object)
 
     def _propagate(self, idx, change):
@@ -68,6 +69,7 @@ class SumTree(object):
         self.data[self.position] = data
         self.update(idx, priority)
         self.position = (self.position + 1) % self.capacity
+        self.length = min(self.length+1, self.capacity)
 
     def _retrieve(self, idx, p):  # retrieve p
         left = 2 * idx + 1

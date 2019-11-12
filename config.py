@@ -1,24 +1,23 @@
 class AgentConfig:
-    EXPERIMENT_NO = 21
+    EXPERIMENT_NO = 80
 
     START_EPISODE = 0
-    NUM_EPISODES = 1000
-    MEMORY_CAPA = 100000
+    NUM_EPISODES = 500
+    MEMORY_CAPA = 10000
     MAX_EPS = 1.0
-    MIN_EPS = 0.05
-    
-    LR = 5e-4
-    DECAY_RATE = 0.99
-    BATCH_SIZE = 32
+    MIN_EPS = 0.01
     UPDATE_FREQ = 10
-    GAMMA = 0.99
-
     
-    RES_PATH = './experiments/'
+    LR = 5e-4          # learning rate
+    DECAY_RATE = 0.99   # decay rate
+    BATCH_SIZE = 32     # batch size
+    GAMMA = 0.99        # gamma
 
-    DOUBLE = False
-    DUELING = True
-    PER = False
+    DOUBLE = True      # double Q-learning
+    DUELING = True     # dueling network
+    PER = True         # prioritized replay
+
+    RES_PATH = './experiments/'
 
 
 class EnvConfig:
