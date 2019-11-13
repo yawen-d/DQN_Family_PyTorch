@@ -68,8 +68,8 @@ class Agent(AgentConfig, EnvConfig):
 
     def train(self):
         # define the optimizer
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR).to(device)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5).to(device)
         # define the recorders
         self.episode_durations = []
         self.policy_net_scores = []
@@ -188,7 +188,7 @@ class Agent(AgentConfig, EnvConfig):
             losses = losses * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1) * abs_errors
         
         # Compute the final loss
-        loss = torch.mean(losses)
+        loss = torch.mean(losses).to(device)
 
         # Optimize the model
         self.optimizer.zero_grad()
