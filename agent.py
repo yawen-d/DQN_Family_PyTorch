@@ -68,8 +68,10 @@ class Agent(AgentConfig, EnvConfig):
 
     def train(self):
         # define the optimizer
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR).to(device)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5).to(device)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR)
+        # self.optimizer.to(device)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5)
+        # self.scheduler.to(device)
         # define the recorders
         self.episode_durations = []
         self.policy_net_scores = []
