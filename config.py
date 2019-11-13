@@ -8,7 +8,7 @@ class AgentConfig:
     EXPERIMENT_NO = 99
 
     START_EPISODE = 0
-    NUM_EPISODES = 1000
+    NUM_EPISODES = 2000
     MEMORY_CAPA = 50000
     MAX_EPS = 1.0
     MIN_EPS = 0.01

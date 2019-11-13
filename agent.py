@@ -69,6 +69,7 @@ class Agent(AgentConfig, EnvConfig):
     def train(self):
         # define the optimizer
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5)
         # define the recorders
         self.episode_durations = []
         self.policy_net_scores = []
@@ -114,19 +115,19 @@ class Agent(AgentConfig, EnvConfig):
                     self.episode_durations.append(t + 1)
                     break
             
+            cur_lr = self.optimizer.state_dict()["param_groups"][0]["lr"]
             if self.PER:
-                print("Episode {} finished after {} timesteps -- EPS: {:.4f} -- BETA: {:.4f}" \
-                                    .format(i_episode, t+1, self.epsilon, self.memory.beta))
+                print("Episode {} finished after {} timesteps -- EPS: {:.4f} -- LR: {:.6f} -- BETA: {:.4f}" \
+                                    .format(i_episode, t+1, self.epsilon, cur_lr, self.memory.beta))
             else:
-                print("Episode {} finished after {} timesteps -- EPS: {:.4f}" \
-                                    .format(i_episode, t+1, self.epsilon))
-
+                print("Episode {} finished after {} timesteps -- EPS: {:.4f} -- LR: {:.6f}" \
+                                    .format(i_episode, t+1, self.epsilon, cur_lr))
             self.policy_net_scores.append(self.demo())
             self.eps_list.append(self.epsilon)
             if (i_episode + 1) % self.UPDATE_FREQ == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
                 print('Target Net updated!')
-
+            self.scheduler.step()
         print('Complete!')
 
     def _optimize_model(self, verbose = False):
@@ -178,13 +179,13 @@ class Agent(AgentConfig, EnvConfig):
         
         if self.PER:
             # Compute abs TD error
-            abs_errors = torch.abs(target_values - state_action_values).detach()
+            abs_errors = t.detach()
             abs_errors_ = abs_errors.numpy() 
             # Update the priority level
             self.memory.batch_update(batch_idx, abs_errors_)
             # accumulate weight-change
             norm_ISWeights = glNorm_ISWeights / glNorm_ISWeights.max() # batch normalize the IS weights
-            losses = losses * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1) #* abs_errors
+            losses = losses * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1) * abs_errors
         
         # Compute the final loss
         loss = torch.mean(losses)
