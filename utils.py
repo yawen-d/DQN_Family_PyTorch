@@ -91,3 +91,6 @@ class SumTree(object):
 
     def total(self):
         return self.tree[0]
+    
+    def __len__(self):
+        return self.length

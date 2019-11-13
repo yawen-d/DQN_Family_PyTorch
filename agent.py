@@ -15,25 +15,29 @@ from config import AgentConfig, EnvConfig
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent(AgentConfig, EnvConfig):
-    def __init__(self):
-        """initialize the agent and the environments"""
+    def __init__(self, args):
+        self.get_env_cfg(args)
+        self.get_agent_cfg(args)
+        self._build()
+
+    def _build(self):
+        """build the agent and the environments"""
         self.env = gym.make(self.ENV)
         if self.PER:
-            self.memory = PrioritizedReplayMemory(capacity = self.MEMORY_CAPA) 
+            self.memory = PrioritizedReplayMemory(
+                capacity = self.MEMORY_CAPA,
+                alpha = self.ALPHA,
+                beta = self.BETA) 
         else:
-            self.memory = ReplayMemory(capacity = self.MEMORY_CAPA) 
-                                
-        self._build_nets()
-        self.epsilon = self.MAX_EPS
-
-    def _build_nets(self):
+            self.memory = ReplayMemory(capacity = self.MEMORY_CAPA)       
         self.num_actions = self.env.action_space.n
         self.policy_net = DQN(self.num_actions, input_size = 4, 
                                 hidden_size = 32, dueling = self.DUELING).to(device)
         self.target_net = DQN(self.num_actions, input_size = 4, 
                                 hidden_size = 32, dueling = self.DUELING).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-
+        self.epsilon = self.MAX_EPS
+        
     def _eps_decay(self):
         self.epsilon = max(self.epsilon * self.DECAY_RATE, self.MIN_EPS)
 
@@ -65,6 +69,7 @@ class Agent(AgentConfig, EnvConfig):
     def train(self):
         # define the optimizer
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR)
+        # define the recorders
         self.episode_durations = []
         self.policy_net_scores = []
         self.eps_list = []
@@ -130,9 +135,13 @@ class Agent(AgentConfig, EnvConfig):
         if not self.PER:
             transitions = self.memory.sample(self.BATCH_SIZE)
         else:
-            batch_idx, transitions, norm_ISWeights = self.memory.sample(self.BATCH_SIZE)
+            batch_idx, transitions, glNorm_ISWeights = self.memory.sample(self.BATCH_SIZE)
         # sample random minibatch of transitions from memory
-        batch = Transition(*zip(*transitions))
+        try:
+            batch = Transition(*zip(*transitions))
+        except TypeError:
+            print("Type Error, but continue!")
+            return
 
         state_batch = torch.stack(batch.state)
         action_batch = torch.stack(batch.action)
@@ -141,11 +150,6 @@ class Agent(AgentConfig, EnvConfig):
         next_state_batch = torch.stack(batch.next_state)
 
         state_action_values = self.policy_net(state_batch.float()).gather(1, action_batch)
-        if verbose:
-            print("--")
-            print("state_values:", self.policy_net(state_batch.float()))
-            print("action_batch:", action_batch)
-            print("state_action_values:", state_action_values)
         not_done_mask = [k for k, v in enumerate(done_batch) if v == 0]
         not_done_next_states = next_state_batch[not_done_mask]
         next_state_values = torch.zeros_like(state_action_values)
@@ -159,22 +163,9 @@ class Agent(AgentConfig, EnvConfig):
             out_q_values = self.target_net(not_done_next_states.float()).gather(1, in_actions)
             # set the next_state_values
             next_state_values[not_done_mask] = out_q_values
-
-            if verbose:
-                print("--")
-                print("in_q_values:", in_q_values)
-                print("in_actions:", in_actions)
-                print("out_q_values", out_q_values)
                 
         else: # DQN
             next_state_values[not_done_mask] = self.target_net(not_done_next_states.float()).max(1)[0].view(-1,1).detach()
-
-        if verbose:
-            print("-")
-            print("done_batch:", done_batch)
-            print("not_done_mask:", not_done_mask)
-            print("next_state_batch:", next_state_batch)
-            print("next_state_values:", next_state_values)
 
         # Compute the expected Q values
         target_values = reward_batch + (self.GAMMA * next_state_values)
@@ -192,8 +183,10 @@ class Agent(AgentConfig, EnvConfig):
             # Update the priority level
             self.memory.batch_update(batch_idx, abs_errors_)
             # accumulate weight-change
-            losses = losses * abs_errors * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1)
+            norm_ISWeights = glNorm_ISWeights / glNorm_ISWeights.max() # batch normalize the IS weights
+            losses = losses * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1) #* abs_errors
         
+        # Compute the final loss
         loss = torch.mean(losses)
 
         # Optimize the model
@@ -243,6 +236,8 @@ class Agent(AgentConfig, EnvConfig):
             "DECAY_RATE" : self.DECAY_RATE,
             "BATCH_SIZE" : self.BATCH_SIZE,
             "GAMMA" : self.GAMMA,
+            "ALPHA" : self.ALPHA,
+            "BETA" : self.BETA, 
             "UPDATE_FREQ" : self.UPDATE_FREQ,
             "RES_PATH" : self.RES_PATH,
             "DOUBLE" : self.DOUBLE,
@@ -259,7 +254,7 @@ class Agent(AgentConfig, EnvConfig):
 
     def demo(self, verbose = False):
         scores = []
-        for i_episode in range(100):
+        for i_episode in range(self.DEMO_NUM):
             # initialize initial state
             state = self.env.reset()
             state = torch.from_numpy(state)
