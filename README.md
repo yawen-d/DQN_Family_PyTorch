@@ -73,7 +73,7 @@ class DQN(nn.Module):
 if self.PER:
             batch_idx, transitions, glNorm_ISWeights = self.memory.sample(self.BATCH_SIZE)   
         else:
-        		transitions = self.memory.sample(self.BATCH_SIZE)
+        	transitions = self.memory.sample(self.BATCH_SIZE)
 
 if self.PER:
         # Compute abs TD error
