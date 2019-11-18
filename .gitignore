@@ -10,4 +10,7 @@ figures/
 # Playground.ipynb
 Playground.ipynb
 
+# *.sh
+*.sh
+
 __pycache__/
