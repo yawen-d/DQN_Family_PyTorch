@@ -8,9 +8,11 @@ def get_args():
     parser.add_argument('-lr', '--learning_rate', metavar='lr', type=float, help='learning rate')
     parser.add_argument('-dr', '--decay_rate', metavar='dr', type=float, help='epsilon decay rate')
     parser.add_argument('-b', '--batch_size', metavar='bs', type=int, help='batch size')
+    parser.add_argument('-epi', '--num_episodes', metavar='epi', type=int, help='number of episodes')
     parser.add_argument('--gamma', metavar='g',  type=float, help='gamma')
     parser.add_argument('--alpha', metavar='a',  type=float, help='alpha for PER')
     parser.add_argument('--beta', metavar='b',  type=float, help='beta for PER')
+    parser.add_argument('-ss', '--lr_step_size', metavar='ss', type=int, help='learning rate step size')
 
     parser.add_argument('--double', action='store_true', 
                         help='double DQN')

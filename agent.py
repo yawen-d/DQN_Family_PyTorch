@@ -44,7 +44,7 @@ class Agent(AgentConfig, EnvConfig):
     def greedy_action(self, state, eps):
         if torch.rand([1]).item() > eps:
             with torch.no_grad():
-                q_values = self.target_net(state.unsqueeze(0).float())
+                q_values = self.policy_net(state.unsqueeze(0).float())
                 action = q_values.max(1)[1].view(1)
                 
         else:
@@ -69,13 +69,12 @@ class Agent(AgentConfig, EnvConfig):
     def train(self):
         # define the optimizer
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr = self.LR)
-        # self.optimizer.to(device)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.5)
-        # self.scheduler.to(device)
+        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=self.LR_STEP_SIZE, gamma=0.5)
         # define the recorders
         self.episode_durations = []
         self.policy_net_scores = []
         self.eps_list = []
+        self.lr_list = []
 
         # train the agent for designated number of episodes
         for i_episode in range(self.START_EPISODE, self.NUM_EPISODES):
@@ -124,6 +123,7 @@ class Agent(AgentConfig, EnvConfig):
             else:
                 print("Episode {} finished after {} timesteps -- EPS: {:.4f} -- LR: {:.6f}" \
                                     .format(i_episode, t+1, self.epsilon, cur_lr))
+            self.lr_list.append(cur_lr)
             self.policy_net_scores.append(self.demo())
             self.eps_list.append(self.epsilon)
             if (i_episode + 1) % self.UPDATE_FREQ == 0:
@@ -186,8 +186,8 @@ class Agent(AgentConfig, EnvConfig):
             # Update the priority level
             self.memory.batch_update(batch_idx, abs_errors_)
             # accumulate weight-change
-            norm_ISWeights = glNorm_ISWeights / glNorm_ISWeights.max() # batch normalize the IS weights
-            losses = losses * torch.from_numpy(norm_ISWeights).reshape(self.BATCH_SIZE,-1) * abs_errors
+            # norm_ISWeights = glNorm_ISWeights / glNorm_ISWeights.max() # batch normalize the IS weights
+            losses = losses * torch.from_numpy(glNorm_ISWeights).reshape(self.BATCH_SIZE,-1) #* abs_errors
         
         # Compute the final loss
         loss = torch.mean(losses).to(device)
@@ -235,14 +235,20 @@ class Agent(AgentConfig, EnvConfig):
             "MEMORY_CAPA" : self.MEMORY_CAPA,
             "MAX_EPS" : self.MAX_EPS,
             "MIN_EPS" : self.MIN_EPS,
+            "UPDATE_FREQ" : self.UPDATE_FREQ,
+            "DEMO_NUM" : self.DEMO_NUM,
+            
             "LR" : self.LR,
+            "LR_STEP_SIZE": self.LR_STEP_SIZE,
             "DECAY_RATE" : self.DECAY_RATE,
             "BATCH_SIZE" : self.BATCH_SIZE,
             "GAMMA" : self.GAMMA,
+
             "ALPHA" : self.ALPHA,
             "BETA" : self.BETA, 
-            "UPDATE_FREQ" : self.UPDATE_FREQ,
+
             "RES_PATH" : self.RES_PATH,
+
             "DOUBLE" : self.DOUBLE,
             "DUELING" : self.DUELING,
             "PER" : self.PER
@@ -252,8 +258,8 @@ class Agent(AgentConfig, EnvConfig):
                 f.write("{} = {}\n".format(k, v))
             f.write("------------------\n")
             for i in range(len(self.episode_durations)):
-                f.write("Ep %d finished after %d steps -- EPS: %.4f -- policy net score: %.2f\n"
-                    % (i + 1, self.episode_durations[i], self.eps_list[i], self.policy_net_scores[i]))
+                f.write("Ep %d finished after %d steps -- EPS: %.4f -- LR: %.6f -- policy net score: %.2f\n"
+                    % (i + 1, self.episode_durations[i], self.eps_list[i], self.lr_list[i], self.policy_net_scores[i]))
 
     def demo(self, verbose = False):
         scores = []
@@ -284,6 +290,7 @@ class Agent(AgentConfig, EnvConfig):
                             ))
         else:
             print("policy net scores -- mean:", net_score.mean())
+            # print(net_score)
         return net_score.mean()
 
     def env_close(self):

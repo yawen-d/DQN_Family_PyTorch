@@ -8,14 +8,15 @@ class AgentConfig:
     EXPERIMENT_NO = 99
 
     START_EPISODE = 0
-    NUM_EPISODES = 2000
+    NUM_EPISODES = 500
     MEMORY_CAPA = 50000
     MAX_EPS = 1.0
     MIN_EPS = 0.01
     UPDATE_FREQ = 10
     DEMO_NUM = 100
     
-    LR = 25e-5          # learning rate
+    LR = 5e-4          # learning rate
+    LR_STEP_SIZE = 9999 # learning rate step size
     DECAY_RATE = 0.99   # decay rate
     BATCH_SIZE = 32     # batch size
     GAMMA = 0.99        # gamma
@@ -27,6 +28,8 @@ class AgentConfig:
     DUELING = False     # dueling network
     PER = False         # prioritized replay
 
+    
+
     RES_PATH = './experiments/'
 
     def get_agent_cfg(self, args):
@@ -35,10 +38,13 @@ class AgentConfig:
         self.LR = args['learning_rate'] if args['learning_rate'] else self.LR
         self.DECAY_RATE = args['decay_rate'] if args['decay_rate'] else self.DECAY_RATE
         self.BATCH_SIZE = args['batch_size'] if args['batch_size'] else self.BATCH_SIZE
+        self.NUM_EPISODES = args['num_episodes'] if args['num_episodes'] else self.NUM_EPISODES
         self.GAMMA = args['gamma'] if args['gamma'] else self.GAMMA
 
         self.ALPHA = args['alpha'] if args['alpha'] else self.ALPHA
         self.BETA = args['beta'] if args['beta']  else self.BETA
+
+        self.LR_STEP_SIZE = args['lr_step_size'] if args['lr_step_size'] else self.LR_STEP_SIZE
 
         self.DOUBLE = args['double'] if args['double'] else self.DOUBLE
         self.DUELING = args['dueling'] if args['dueling'] else self.DUELING
