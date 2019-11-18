@@ -1,16 +1,9 @@
-# ignore checkpoints
-checkpoints/
-
-# tmps
+__pycache__/
+.vscode/
 tmp/
-
-# figures
 figures/
-
-# Playground.ipynb
 Playground.ipynb
-
-# *.sh
+.ipynb_checkpoints/
 *.sh
 
-__pycache__/
+
